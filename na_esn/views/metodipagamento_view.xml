@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Thanks to Nehal, Niyas Raphy - Odoo Forum-->
+<odoo>
+
+    <!--VIEWS-->
+
+        <record id="na_metodi_pagamento_form" model="ir.ui.view">
+            <field name="name">na.metodi.pagamento.form</field>
+            <field name="model">metodi.pagamento</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="name"/>
+                        <field name="ignora_scadenza"/>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+        <record id="na_metodi_pagamento__tree" model="ir.ui.view">
+            <field name="name">na.metodi.pagamento.tree</field>
+            <field name="model">metodi.pagamento</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="ignora_scadenza"/>
+                </tree>
+            </field>
+        </record>
+
+    <!--ACTION-->
+
+        <record id="action_metodi_pagamento" model="ir.actions.act_window">
+                <field name="name">Metodi Pagamento</field>
+                <field name="type">ir.actions.act_window</field>
+                <field name="res_model">metodi.pagamento</field>
+                <field name="view_type">form</field>
+                <field name="view_mode">tree,form</field>
+                <field name="help" type="html">
+                    <p class="oe_view_nocontent_create">Nessun metodo di pagamento inserito</p>
+                </field>
+        </record>
+
+    <!--MENU-->
+        <menuitem
+            name="Metodi di Pagamento"
+            parent="account.account_management_menu"
+            action="na_esn.action_metodi_pagamento"
+            id="na_metodi_pagamento_menu"/>
+
+</odoo>

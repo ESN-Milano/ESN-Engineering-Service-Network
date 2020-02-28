@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <template id="report_fattura_document" inherit_id="account.report_invoice_document">
+            <xpath expr="//div[@class='page']/p[1]" position="replace"/>
+            <xpath expr="//div[@name='customer_code']" position="replace"/>
+            <xpath expr="//p[@name='payment_term']" position="after">
+                <p t-if="o.partner_bank_id" name="partner_bank">
+                    IBAN: <span t-field="o.partner_bank_id.acc_number"/>
+                </p>
+            </xpath>
+        </template>
+    </data>
+</odoo>
