@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="na_custom_invoice_supplier_form" model="ir.ui.view">
+            <field name="name">na.custom.invoice.supplier.form</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="account.invoice_supplier_form" />
+            <field name="arch" type="xml">
+
+                <xpath expr="//field[@name='partner_bank_id']" position="after">
+                    <field name="metodo_pagamento"/>
+                </xpath>
+
+                <xpath expr="//page[2]" position="after">
+                    <page string="Tranche Pagamenti" name="t_pagamenti">
+                        <group>
+                            <group>
+                                <field name="is_tranche"/>
+                            </group>
+                            <group attrs="{'invisible':[('is_tranche','=',False)]}">
+                                <group string="Consegna">
+                                   <field name="data_consegna" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_consegna_payed','=',True)]}"/>
+                                   <field name="importo_consegna" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_consegna_payed','=',True)]}" widget="monetary" options="{'currency_field':'currency_id'}"/>
+                                   <field name="is_consegna_payed" string="Tranche consegna pagata"/>
+                                </group>
+                                <group string="Collaudo">
+                                    <field name="data_collaudo" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_collaudo_payed','=',True)]}"/>
+                                    <field name="importo_collaudo" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_collaudo_payed','=',True)]}" widget="monetary" options="{'currency_field':'currency_id'}"/>
+                                    <field name="is_collaudo_payed" string="Tranche collaudo pagata"/>
+                                </group>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+
+            </field>
+    </record>
+
+    <record id="na_custom_invoice_search" model="ir.ui.view">
+            <field name="name">na.custom.invoice.search</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="account.view_account_invoice_filter" />
+            <field name="arch" type="xml">
+
+                <xpath expr="//field[@name='number']" position="after">
+                    <field name="metodo_pagamento"/>
+                </xpath>
+                <xpath expr="//filter[@name='late']" position="attributes">
+                    <attribute name="domain">['|','&amp;', ('date_due', '&lt;', time.strftime('%Y-%m-%d')), '&amp;', '|', ('metodo_pagamento.ignora_scadenza', '=', False), ('metodo_pagamento', '=', False),('state', 'in', ('open','draft')), '|', ('is_consegna_due_stored','=',True),('is_collaudo_due_stored','=',True)]</attribute>
+                </xpath>
+                 <xpath expr="//filter[@name='status']" position="after">
+                    <filter name="m_pagamento" string="Metodo di pagamento" context="{'group_by':'metodo_pagamento'}"/>
+                </xpath>
+
+            </field>
+    </record>
+
+    <record id="riba_filter" model="ir.filters">
+        <field name="name">Riba fine mese</field>
+        <field name="model_id">account.invoice</field>
+        <field name="user_id" eval="False"/>
+        <field name="is_default">False</field>
+        <field name="domain">[('is_riba_due_stored','=',True),('state', 'in', ('open','draft'))]</field>
+        <field name="context">{'group_by': ['date_due']}</field>
+    </record>
+
+     <record id="na_custom_invoice_form" model="ir.ui.view">
+            <field name="name">na.custom.invoice.form</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="account.invoice_form" />
+            <field name="arch" type="xml">
+
+                <xpath expr="//page[@name='other_info']" position="after">
+                    <page string="Tranche Pagamenti" name="t_pagamenti">
+                        <group>
+                            <group>
+                                <field name="is_tranche"/>
+                            </group>
+                            <group attrs="{'invisible':[('is_tranche','=',False)]}">
+                                <group string="Consegna">
+                                   <field name="data_consegna" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_consegna_payed','=',True)]}"/>
+                                   <field name="importo_consegna" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_consegna_payed','=',True)]}" widget="monetary" options="{'currency_field':'currency_id'}"/>
+                                   <field name="is_consegna_payed" string="Tranche consegna pagata"/>
+                                </group>
+                                <group string="Collaudo">
+                                    <field name="data_collaudo" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_collaudo_payed','=',True)]}"/>
+                                    <field name="importo_collaudo" attrs="{'required':[('is_tranche','=',True)], 'readonly':[('is_collaudo_payed','=',True)]}" widget="monetary" options="{'currency_field':'currency_id'}"/>
+                                    <field name="is_collaudo_payed" string="Tranche collaudo pagata"/>
+                                </group>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+    </record>
+
+    <record id="na_custom_invoice_tree" model="ir.ui.view">
+            <field name="name">na.custom.invoice.tree</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="account.invoice_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='amount_total_signed']" position="after">
+                    <field name="importo_consegna" options="{'fg_color':'red:is_consegna_due==True;green:is_consegna_payed==True'}"/>
+                    <field name="importo_collaudo" options="{'fg_color':'red:is_collaudo_due==True;green:is_collaudo_payed==True'}"/>
+                    <field name="is_consegna_due" invisible="1"/>
+                    <field name="is_collaudo_due" invisible="1"/>
+                    <field name="is_consegna_due_stored" invisible="1"/>
+                    <field name="is_collaudo_due_stored" invisible="1"/>
+                    <field name="is_consegna_payed" invisible="1"/>
+                    <field name="is_collaudo_payed" invisible="1"/>
+                </xpath>
+            </field>
+    </record>
+
+    <record id="na_custom_invoice_supplier_tree" model="ir.ui.view">
+            <field name="name">na.custom.invoice.supplier.tree</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="account.invoice_supplier_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='amount_total_signed']" position="after">
+                    <field name="importo_consegna" options="{'fg_color':'red:is_consegna_due==True;green:is_consegna_payed==True'}"/>
+                    <field name="importo_collaudo" options="{'fg_color':'red:is_collaudo_due==True;green:is_collaudo_payed==True'}"/>
+                    <field name="is_consegna_due" invisible="1"/>
+                    <field name="is_collaudo_due" invisible="1"/>
+                    <field name="is_riba_due" groups="base.group_no_one"/>
+                    <field name="is_consegna_due_stored" invisible="1"/>
+                    <field name="is_collaudo_due_stored" invisible="1"/>
+                    <field name="is_riba_due_stored" groups="base.group_no_one"/>
+                    <field name="is_consegna_payed" invisible="1"/>
+                    <field name="is_collaudo_payed" invisible="1"/>
+                </xpath>
+            </field>
+    </record>
+
+<!--    <record id="na_custom_account_report_form" model="ir.ui.view">-->
+<!--            <field name="name">na.custom.account.report.form</field>-->
+<!--            <field name="model">accounting.report</field>-->
+<!--            <field name="inherit_id" ref="account.accounting_report_view"/>-->
+<!--            <field name="arch" type="xml">-->
+<!--                  <xpath expr="//field[@name='account_report_id']" position="attributes">-->
+<!--                    <attribute name="domain"/>-->
+<!--                </xpath>-->
+<!--            </field>-->
+<!--    </record>-->
+</odoo>

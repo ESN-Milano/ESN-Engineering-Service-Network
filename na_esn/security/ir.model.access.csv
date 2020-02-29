@@ -1,0 +1,5 @@
+id,active,group_id/id,name,model_id/id,perm_read,perm_write,perm_unlink,perm_create
+esn_metodi_pagamento,TRUE,base.group_user,access_metodipagamento,na_esn.model_metodi_pagamento,TRUE,TRUE,TRUE,TRUE
+
+
+
