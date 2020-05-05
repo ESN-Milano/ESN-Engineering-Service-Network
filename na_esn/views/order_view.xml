@@ -11,5 +11,15 @@
                 </xpath>
             </field>
         </record>
+        <record id="na_basic_order_form_inherit" model="ir.ui.view">
+            <field name="name">na.sale.order.basic.form</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='validity_date']" position="after">
+                    <field name="estimated_delivery_date"/>
+                </xpath>
+            </field>
+        </record>
     </data>
 </odoo>
