@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="na_report_esn_sale_order_document" inherit_id="sale.report_saleorder_document">
+            <xpath expr="//div/div[2]/div[6]" position="after">
+                <div t-if="doc.estimated_delivery_date" class="mr32">
+                    <strong>Data Consegna Stimata:</strong>
+                    <p t-field="doc.estimated_delivery_date"/>
+                </div>
+            </xpath>
+        </template>
+    </data>
+</odoo>

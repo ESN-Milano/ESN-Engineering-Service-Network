@@ -30,6 +30,8 @@
     'depends':	[
         'base',
         'crm',
+        'sale',
+        'sale_management',
         'sale_stock',
         'maintenance',
         'account',
@@ -50,5 +52,8 @@
        'views/maintenance_view.xml',
        'views/order_view.xml',
        'report/invoice_report.xml',
+       'report/order_report.xml',
+       'report/purchase_report_templates.xml'
+
       ],
 }

@@ -1,35 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-<!--    <record id="na_custom_maintenance_form" model="ir.ui.view">-->
-<!--            <field name="name">na.custom.maintenance.form</field>-->
-<!--            <field name="model">maintenance.request</field>-->
-<!--            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form" />-->
-<!--            <field name="arch" type="xml">-->
+    <record id="na_custom_maintenance_form" model="ir.ui.view">
+            <field name="name">na.custom.maintenance.form</field>
+            <field name="model">maintenance.request</field>
+            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form" />
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='user_id']" position="after">
+                    <field name="tecnici" widget="many2many_tags"/>
+                    <field name="tecnici_char" groups="base.group_no_one"/>
+                </xpath>
+            </field>
+    </record>
 
-<!--                <xpath expr="//field[@name='technician_user_id']" position="after">-->
-<!--                    <field name="tecnici" widget="many2many_tags"/>-->
-<!--                    <field name="tecnici_char" groups="base.group_no_one"/>-->
-<!--                </xpath>-->
+    <record id="na_custom_maintenance_kanban" model="ir.ui.view">
+            <field name="name">na.custom.maintenance.kanban</field>
+            <field name="model">maintenance.request</field>
+            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_kanban" />
+            <field name="arch" type="xml">
 
-<!--            </field>-->
-<!--    </record>-->
+                <xpath expr="//kanban/field[@name='owner_user_id']" position="after">
+                    <field name="tecnici_char"/>
+                </xpath>
 
-<!--    <record id="na_custom_maintenance_kanban" model="ir.ui.view">-->
-<!--            <field name="name">na.custom.maintenance.kanban</field>-->
-<!--            <field name="model">maintenance.request</field>-->
-<!--            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_kanban" />-->
-<!--            <field name="arch" type="xml">-->
+                <xpath expr="//span[@name='owner_user_id']" position="after">
+                        <span name="tecnici_char" t-if="record.tecnici_char.raw_value"><field name="tecnici_char"/><br/></span>
+                </xpath>
 
-<!--                <xpath expr="//kanban/field[@name='technician_user_id']" position="after">-->
-<!--                    <field name="tecnici_char"/>-->
-<!--                </xpath>-->
-
-<!--                <xpath expr="//span[@name='owner_user_id']" position="replace">-->
-<!--                    <span name="tecnici_char" t-if="record.tecnici_char.raw_value"><field name="tecnici_char"/><br/></span>-->
-<!--                </xpath>-->
-
-<!--            </field>-->
-<!--    </record>-->
+            </field>
+    </record>
 
 <!--    <record id="na_custom_maintenance_tree" model="ir.ui.view">-->
 <!--            <field name="name">na.custom.maintenance.tree</field>-->
