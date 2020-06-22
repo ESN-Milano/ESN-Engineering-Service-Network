@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record model="ir.actions.server" id="recompute_qty_invoiced_so">
+        <field name="name">Compute invoiced quantity</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="state">code</field>
+        <field name="sequence">5</field>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_type">action</field>
+        <field name="code">
+records.recompute_invoice_status()
+        </field>
+    </record>
+</odoo>

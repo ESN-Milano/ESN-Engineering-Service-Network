@@ -1,0 +1,13 @@
+<odoo>
+    <record model="ir.ui.view" id="	inherit_purchase_order_form">
+        <field name="name">fixing_po.purchase_order_form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="priority">999</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_approve']" position="after">
+                <field name="to_fix"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
