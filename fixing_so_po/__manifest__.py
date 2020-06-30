@@ -9,7 +9,8 @@
         'purchase',
     ],
     'data': [
-       
+       'actions/actions.xml',
+       'views/purchase_order.xml',
     ],
     'installable': True,
     'auto_install': False,
