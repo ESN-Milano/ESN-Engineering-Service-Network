@@ -122,12 +122,10 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
             options = options || {};
             this.url = options.url || 'http://192.168.1.1/cgi-bin/fpmate.cgi';
             this.fiscalPrinter = new epson.fiscalPrint();
-            this.fpresponse = false;
             this.sender = sender;
             this.order = options.order || null;
             this.fiscalPrinter.onreceive = function(res, tag_list_names, add_info) {
                 sender.chrome.loading_hide();
-                self.fpresponse = tag_list_names
                 var tagStatus = (tag_list_names ? tag_list_names.filter(getStatusField) : []);
                 var msgPrinter = "";
 
@@ -137,6 +135,11 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
                 }
 
                 if (!res.success) {
+                    if (self.order != null) {
+                        var order = self.order;
+                        order.fiscal_printer_debug_info = JSON.stringify(res) + '\n' + JSON.stringify(tag_list_names) + '\n' + JSON.stringify(add_info);
+                        sender.pos.push_order(order);
+                    }
                     if (tagStatus.length > 0) {
                         var info = add_info[tagStatus[0]];
                         var msgPrinter = decodeFpStatus(info);
@@ -170,7 +173,7 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
                     if (!order.fiscal_receipt_number) {
                         order.fiscal_receipt_number = parseInt(add_info.fiscalReceiptNumber);
                         order.fiscal_receipt_amount = parseFloat(add_info.fiscalReceiptAmount.replace(',', '.'));
-                        var fiscalReceiptDate = new Date(add_info.fiscalReceiptDate.replace(/(\d{2})\/(\d{1,2})\/(\d{4})/, '$3/$2/$1'));
+                        var fiscalReceiptDate = new Date(add_info.fiscalReceiptDate.replace(/(\d{1,2})\/(\d{1,2})\/(\d{4})/, '$3/$2/$1'));
                         order.fiscal_receipt_date = moment(fiscalReceiptDate).format('YYYY-MM-DD');
                         order.fiscal_z_rep_number = add_info.zRepNumber;
                         order.fiscal_printer_serial = sender.pos.config.fiscal_printer_serial;
@@ -300,11 +303,12 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
         // but before <beginFiscalReceipt /> otherwise it will not be printed
         // as additional header messageType=1
         printFiscalReceiptHeader: function(receipt){
+            var self = this;
             var msg = '';
             if (receipt.header != '' && receipt.header.length > 0) {
                 var hdr = receipt.header.split(/\r\n|\r|\n/);
                 _.each(hdr, function(m, i) {
-                    msg += '<printRecMessage' + ' messageType="1" message="' + this.encodeXml(m)
+                    msg += '<printRecMessage' + ' messageType="1" message="' + self.encodeXml(m)
                          + '" font="1" index="' + (i+1) + '"'
                          + ' operator="' + (receipt.operator || '1') + '" />'
                     });
@@ -315,11 +319,12 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
         // Remember that the footer goes within <printerFiscalReceipt><beginFiscalReceipt />
         // as PROMO code messageType=3
         printFiscalReceiptFooter: function(receipt){
+            var self = this;
             var msg = '';
             if (receipt.footer != '' && receipt.footer.length > 0) {
                 var hdr = receipt.footer.split(/\r\n|\r|\n/);
                 _.each(hdr, function(m, i) {
-                    msg += '<printRecMessage' + ' messageType="3" message="' + this.encodeXml(m)
+                    msg += '<printRecMessage' + ' messageType="3" message="' + self.encodeXml(m)
                          + '" font="1" index="' + (i+1) + '"'
                          + ' operator="' + (receipt.operator || '1') + '" />'
                     });
@@ -349,8 +354,6 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
             if (!has_refund) {
                 xml += '<beginFiscalReceipt/>';
             }
-            // footer can go only as promo code so within a fiscal receipt body
-            xml += this.printFiscalReceiptFooter(receipt);
             if (has_refund)
             {
                 xml += this.printFiscalRefundDetails({
@@ -362,21 +365,17 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
             _.each(receipt.orderlines, function(l, i, list) {
                 if (l.price >= 0) {
                     if(l.quantity>=0) {
-                        var full_price = l.price;
-                        if (l.discount) {
-                            full_price = round_pr(l.price / (1 - (l.discount / 100)), self.sender.pos.currency.rounding);
-                        }
                         xml += self.printRecItem({
                             description: l.product_name,
                             quantity: l.quantity,
-                            unitPrice: full_price,
+                            unitPrice: l.full_price,
                             department: l.tax_department.code
                         });
                         if (l.discount) {
                             xml += self.printRecItemAdjustment({
                                 adjustmentType: 0,
                                 description: _t('Discount') + ' ' + l.discount + '%',
-                                amount: round_pr((l.quantity * full_price) - (l.quantity * l.price), self.sender.pos.currency.rounding),
+                                amount: round_pr((l.quantity * l.full_price) - l.price_display, self.sender.pos.currency.rounding),
                             });
                         }
                     }
@@ -399,6 +398,8 @@ odoo.define("fiscal_epos_print.epson_epos_print", function (require) {
                     });
                 }
             });
+            // footer can go only as promo code so within a fiscal receipt body
+            xml += this.printFiscalReceiptFooter(receipt);
             if (has_refund) {
                 xml += self.printRecTotalRefund({});
             }

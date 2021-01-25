@@ -13,12 +13,14 @@ class ResPartner(models.Model):
     """Adds last name and first name; name becomes a stored function field."""
     _inherit = 'res.partner'
 
+    #Tradotti first name e last name in italiano
+
     firstname = fields.Char(
-        "First name",
+        "Nome",
         index=True,
     )
     lastname = fields.Char(
-        "Last name",
+        "Cognome",
         index=True,
     )
     name = fields.Char(
@@ -238,7 +240,13 @@ class ResPartner(models.Model):
                                ("lastname", "=", False)])
 
         # Force calculations there
-        records._inverse_name()
+        # Modifica Nexapp -> Faccio il commit per ogni record se no va in timeout
+        for record in records:
+            try:
+                record._inverse_name()
+            except:
+                pass
+            self._cr.commit()
         _logger.info("%d partners updated installing module.", len(records))
 
     # Disabling SQL constraint givint a more explicit error using a Python

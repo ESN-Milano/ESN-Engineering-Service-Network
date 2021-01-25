@@ -2,3 +2,5 @@ codicefiscale
 PyXB==1.2.6
 unidecode
 phonenumbers
+asn1crypto
+openupgradelib

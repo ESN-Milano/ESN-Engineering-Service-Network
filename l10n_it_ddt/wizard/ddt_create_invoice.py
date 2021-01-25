@@ -23,6 +23,10 @@ class DdtCreateInvoice(models.TransientModel):
     @api.multi
     def create_invoice(self):
         if self.ddt_ids:
+            # order = self.env['sale.order'].search([('name','=',self.ddt_ids[0].picking_ids[0].origin)])
+            # if order.order_line.filtered(lambda dp: dp.is_downpayment) and order.invoice_ids.filtered(lambda invoice: invoice.state != 'cancel') or order.order_line.filtered(lambda l: l.qty_to_invoice < 0):
+            #     invoice_ids = order.action_invoice_create(final=True)
+            # else:
             invoice_ids = self.ddt_ids.action_invoice_create()
             # ----- Show new invoices
             if invoice_ids:
