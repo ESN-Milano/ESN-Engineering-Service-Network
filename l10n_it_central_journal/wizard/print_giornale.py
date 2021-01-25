@@ -1,5 +1,4 @@
 # Copyright 2018 Gianmarco Conte (gconte@dinamicheaziendali.it)
-# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
 from odoo import models, fields, api, _
 from odoo.exceptions import Warning as UserError
@@ -99,7 +98,7 @@ class WizardGiornale(models.TransientModel):
             aml.date >= %(date_from)s
             AND aml.date <= %(date_to)s
             AND am.state in %(target_type)s
-            AND journal_id in %(journal_ids)s
+            AND aml.journal_id in %(journal_ids)s
             ORDER BY am.date, am.name
         """
         params = {

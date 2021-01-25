@@ -199,11 +199,13 @@ class StockPickingPackagePreparation(models.Model):
             if not package.line_ids:
                 raise UserError(
                     _("Impossible to put in pack a package without details"))
+        res = super(StockPickingPackagePreparation, self).action_put_in_pack()
+        for package in self:
             # ----- Assign ddt number if ddt type is set
             if package.ddt_type_id and not package.ddt_number:
                 package.ddt_number = (
                     package.ddt_type_id.sequence_id.next_by_id())
-        return super(StockPickingPackagePreparation, self).action_put_in_pack()
+        return res
 
     @api.multi
     def set_done(self):
@@ -402,6 +404,7 @@ class StockPickingPackagePreparation(models.Model):
         :returns: list of created invoices
         """
         inv_obj = self.env['account.invoice']
+        final = False
         invoices = {}
         references = {}
         for ddt in self:
@@ -410,6 +413,8 @@ class StockPickingPackagePreparation(models.Model):
             order = ddt._get_sale_order_ref()
 
             if order:
+                if order.order_line.filtered(lambda dp: dp.is_downpayment) and order.invoice_ids.filtered(lambda invoice: invoice.state != 'cancel') or order.order_line.filtered(lambda l: l.qty_to_invoice < 0):
+                    final = True
                 group_method = (
                     order and order.ddt_invoicing_group or 'shipping_partner')
                 group_partner_invoice_id = order.partner_invoice_id.id
@@ -430,8 +435,9 @@ class StockPickingPackagePreparation(models.Model):
                              group_partner_invoice_id)
             else:
                 group_key = ddt.id
-
+            # line_order_ids = []
             for line in ddt.line_ids:
+                # list_order_line = line_order_ids.append(line.sale_line_id.id)
                 if group_key not in invoices:
                     inv_data = ddt._prepare_invoice()
                     invoice = inv_obj.create(inv_data)
@@ -451,6 +457,33 @@ class StockPickingPackagePreparation(models.Model):
                 if line.product_uom_qty > 0:
                     line.invoice_line_create(
                         invoices[group_key].id, line.product_uom_qty)
+            # main_list = np.setdiff1d(order.order_line.ids,line_order_ids)
+            sale_order_line = self.env['sale.order.line'].search([('order_id','=',order.id),('is_downpayment','=',True)])
+            for sale_line in sale_order_line:
+                if sale_line.qty_to_invoice > 0 or (sale_line.qty_to_invoice < 0 and final):
+                    # if group_key not in invoices:
+                    #     inv_data = ddt._prepare_invoice()
+                    #     invoice = inv_obj.create(inv_data)
+                    #     references[invoice] = ddt
+                    #     invoices[group_key] = invoice
+                    #     ddt.invoice_id = invoice.id
+                    # elif group_key in invoices:
+                    #     vals = {}
+                    #
+                    #     origin = invoices[group_key].origin
+                    #     if origin and ddt.ddt_number not in origin.split(', '):
+                    #         vals['origin'] = invoices[
+                    #                              group_key].origin + ', ' + ddt.ddt_number
+                    #     invoices[group_key].write(vals)
+                    #     ddt.invoice_id = invoices[group_key].id
+                    #
+                    # if line.product_uom_qty > 0:
+                    #     line.invoice_line_create(
+                    #         invoices[group_key].id, line.product_uom_qty)
+                    sale_line.invoice_line_create(
+                        invoices[group_key].id, sale_line.qty_to_invoice
+                    )
+
             if references.get(invoices.get(group_key)):
                 if ddt not in references[invoices[group_key]]:
                     references[invoice] = references[invoice] | ddt

@@ -27,7 +27,10 @@ class TestFatturaPAXMLValidation(FatturapaCommon):
 
     def setUp(self):
         super(TestFatturaPAXMLValidation, self).setUp()
-
+        self.wt = self.create_wt_4q()
+        self.wtq = self.create_wt_27_20q()
+        self.wt4q = self.create_wt_26_40q()
+        self.wt2q = self.create_wt_26_20q()
         self.invoice_model = self.env['account.invoice']
 
     def test_00_xml_import(self):
@@ -115,19 +118,6 @@ class TestFatturaPAXMLValidation(FatturapaCommon):
         invoice_id = res.get('domain')[0][2][0]
         invoice = self.invoice_model.browse(invoice_id)
         self.assertEqual(invoice.intermediary.vat, 'IT03339130126')
-
-    # def test_02_xml_import(self):
-    #     res = self.run_wizard('test2', 'IT03638121008_X11111.xml')
-    #     invoice_id = res.get('domain')[0][2][0]
-    #     invoice = self.invoice_model.browse(invoice_id)
-    #     self.assertEqual(invoice.supplier_invoice_number, '00001')
-    #     self.assertEqual(invoice.amount_untaxed, 3)
-    #     self.assertEqual(invoice.amount_tax, 0.66)
-    #     self.assertEqual(
-    #         invoice.fatturapa_summary_ids[0].amount_untaxed, 3)
-    #     self.assertEqual(
-    #         invoice.fatturapa_summary_ids[0].amount_tax, 0.66)
-    #     self.assertEqual(invoice.partner_id.name, "Societa' alpha S.r.l.")
 
     def test_04_xml_import(self):
         res = self.run_wizard('test4', 'IT02780790107_11005.xml')
@@ -486,12 +476,29 @@ class TestFatturaPAXMLValidation(FatturapaCommon):
         res = self.run_wizard('test24', 'IT05979361218_012.xml')
         invoice_id = res.get('domain')[0][2][0]
         invoice = self.invoice_model.browse(invoice_id)
-        self.assertAlmostEqual(invoice.e_invoice_amount_untaxed, 34.32)
-        self.assertEqual(invoice.e_invoice_amount_tax, 0.0)
-        self.assertEqual(invoice.e_invoice_amount_total, 34.32)
+        self.assertEqual(
+            invoice.inconsistencies,
+            'Computed amount untaxed 34.32 is different from'
+            ' summary data 34.67')
 
     def test_25_xml_import(self):
         res = self.run_wizard('test25', 'IT05979361218_013.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertAlmostEqual(invoice.e_invoice_amount_untaxed, 34.67)
+        self.assertEqual(invoice.e_invoice_amount_tax, 0.0)
+        self.assertEqual(invoice.e_invoice_amount_total, 34.32)
+        self.assertEqual(invoice.efatt_rounding, -0.35)
+        invoice.action_invoice_open()
+        move_line = False
+        for line in invoice.move_id.line_ids:
+            if line.account_id.id == self.env.user.\
+                    company_id.arrotondamenti_attivi_account_id.id:
+                move_line = True
+        self.assertTrue(move_line)
+
+    def test_26_xml_import(self):
+        res = self.run_wizard('test26', 'IT05979361218_015.xml')
         invoice_id = res.get('domain')[0][2][0]
         invoice = self.invoice_model.browse(invoice_id)
         self.assertAlmostEqual(invoice.e_invoice_amount_untaxed, 34.32)
@@ -549,6 +556,113 @@ class TestFatturaPAXMLValidation(FatturapaCommon):
         self.assertEqual(invoice.invoice_line_ids[0].price_subtotal, 20.0)
         self.assertEqual(invoice.e_invoice_amount_untaxed, -20.0)
         self.assertEqual(invoice.e_invoice_amount_tax, -4.4)
+
+    def test_34_xml_import(self):
+        # No Ritenuta lines set
+        res = self.run_wizard('test34', 'IT01234567890_FPR08.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertTrue(invoice.e_invoice_validation_error)
+        self.assertEqual(
+            invoice.e_invoice_validation_message,
+            "E-bill contains DatiRitenuta but no lines subjected to Ritenuta was "
+            "found. Please manually check Withholding tax Amount\nE-bill contains "
+            "ImportoRitenuta 360.0 but created invoice has got 0.0\n."
+        )
+
+    def test_35_xml_import(self):
+        # creating 2350 before 2320, so odoo will use 2350 but e-invoices
+        # contains 2320: error message must appear
+        self.create_wt_23_50()
+        self.create_wt_23_20()
+        res = self.run_wizard('test35', 'IT01234567890_FPR09.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertTrue(invoice.e_invoice_validation_error)
+        self.assertEqual(
+            invoice.e_invoice_validation_message,
+            "E-bill contains ImportoRitenuta 30.16 but created invoice has got "
+            "75.41\n."
+        )
+
+    def test_36_xml_import(self):
+        # creating a res.bank and importing an XML without "IstitutoFinanziario"
+        self.create_res_bank()
+        res = self.run_wizard('test36', 'IT01234567890_FPR10.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertEqual(
+            invoice.fatturapa_payments[0].payment_methods[0].payment_bank.bank_id.bic,
+            'BCITITMM')
+        self.assertEqual(
+            invoice.fatturapa_payments[0].payment_methods[0].payment_bank.bank_id.name,
+            'Banca generica')
+
+    def test_37_xml_import_dates(self):
+        self.env.user.lang = 'it_IT'
+        res = self.run_wizard('test37', 'IT02780790107_11004.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertEqual(invoice.fatturapa_attachment_in_id.invoices_date,
+                         '18/12/2014')
+
+    def test_38_xml_import_dates(self):
+        # file B2B downloaded from
+        # http://www.fatturapa.gov.it/export/fatturazione/it/a-3.htm
+        self.env.user.lang = 'it_IT'
+        res = self.run_wizard('test38', 'IT01234567890_FPR03.xml')
+        invoice_ids = res.get('domain')[0][2]
+        invoices = self.invoice_model.browse(invoice_ids)
+        self.assertEqual(len(invoices), 2)
+        self.assertEqual(invoices[0].fatturapa_attachment_in_id.invoices_date,
+                         '18/12/2014 20/12/2014')
+
+    def test_40_xml_import_withholding(self):
+        res = self.run_wizard('test40', 'IT01234567890_FPR11.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertTrue(invoice.e_invoice_validation_error)
+        self.assertEqual(
+            invoice.e_invoice_validation_message,
+            "E-bill contains ImportoRitenuta 92.0 but created invoice has got "
+            "144.0\n."
+        )
+
+    def test_41_xml_import_withholding(self):
+        res = self.run_wizard('test41', 'IT01234567890_FPR12.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertTrue(len(invoice.ftpa_withholding_ids), 2)
+        self.assertAlmostEquals(invoice.amount_total, 1220.0)
+        self.assertAlmostEquals(invoice.withholding_tax_amount, 94.0)
+        self.assertAlmostEquals(invoice.amount_net_pay, 1126.0)
+
+    def test_42_xml_import_withholding(self):
+        # cassa previdenziale sulla quale è applicata la ritenuta
+        res = self.run_wizard('test42', 'IT01234567890_FPR13.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertEqual(invoice.amount_total, 19032.0)
+        self.assertEqual(invoice.withholding_tax_amount, 3120.0)
+        self.assertEqual(invoice.amount_net_pay, 15912.0)
+        self.assertTrue(len(invoice.ftpa_withholding_ids), 1)
+        self.assertTrue(len(invoice.invoice_line_ids) == 2)
+
+    def test_43_xml_import_withholding(self):
+        # Avvocato Mario Bianchi di Ferrara.
+        # Imponibile di 100+15% spese
+        res = self.run_wizard('test43', 'ITBNCMRA80A01D548T_20001.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertEqual(invoice.withholding_tax_amount, 23.0)
+        self.assertTrue(len(invoice.ftpa_withholding_ids), 1)
+        self.assertTrue(len(invoice.invoice_line_ids) == 3)
+
+    def test_44_xml_import(self):
+        res = self.run_wizard('test44', 'ITBNCMRA80A01D548T_20005.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertTrue(len(invoice.invoice_line_ids) == 3)
 
     def test_01_xml_link(self):
         """
@@ -617,6 +731,24 @@ class TestFatturaPAXMLValidation(FatturapaCommon):
         self.assertEqual(invoice.invoice_line_ids[0].quantity, 0)
         self.assertEqual(invoice.invoice_line_ids[1].quantity, 1)
 
+    def test_xml_import_summary_tax_rate(self):
+        # Invoice  with positive total. Detail Level:  '1' -- Tax Rate
+        supplier = self.env['res.partner'].search(
+            [('vat', '=', 'IT02780790107')])[0]
+        # in order to make the system create the invoice lines
+        supplier.e_invoice_detail_level = '1'
+        res = self.run_wizard('test_summary_tax_rate',
+                              'IT05979361218_ripilogoiva.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertEqual(invoice.amount_total, 204.16)
+        self.assertEqual(len(invoice.invoice_line_ids), 2)
+
+        self.assertEqual(invoice.invoice_line_ids[0].price_unit, 164.46)
+        self.assertEqual(invoice.invoice_line_ids[0].quantity, 1.0)
+        self.assertEqual(invoice.invoice_line_ids[1].price_unit, 3.52)
+        self.assertEqual(invoice.invoice_line_ids[1].quantity, 1.0)
+
 
 class TestFatturaPAEnasarco(FatturapaCommon):
 
@@ -625,6 +757,7 @@ class TestFatturaPAEnasarco(FatturapaCommon):
 
         self.invoice_model = self.env['account.invoice']
 
+    def test_01_xml_import_enasarco(self):
         account_payable = self.env['account.account'].create({
             'name': 'Test WH tax',
             'code': 'whtaxpay2',
@@ -648,8 +781,26 @@ class TestFatturaPAEnasarco(FatturapaCommon):
             'payment_term': self.env.ref(
                 'account.account_payment_term_advance').id,
             'wt_types': 'enasarco',
+            'causale_pagamento_id': self.env.ref(
+                'l10n_it_causali_pagamento.r').id,
             'rate_ids': [(0, 0, {
                 'tax': 1.57,
+                'base': 1.0,
+            })]
+        })
+        self.env['withholding.tax'].create({
+            'name': 'Enasarco 8,50',
+            'code': 'TC07',
+            'account_receivable_id': account_receivable.id,
+            'account_payable_id': account_payable.id,
+            'journal_id': misc_journal.id,
+            'payment_term': self.env.ref(
+                'account.account_payment_term_advance').id,
+            'wt_types': 'enasarco',
+            'causale_pagamento_id': self.env.ref(
+                'l10n_it_causali_pagamento.r').id,
+            'rate_ids': [(0, 0, {
+                'tax': 8.5,
                 'base': 1.0,
             })]
         })
@@ -669,8 +820,24 @@ class TestFatturaPAEnasarco(FatturapaCommon):
                 'base': 1.0,
             })]
         })
-
-    def test_01_xml_import_enasarco(self):
+        self.env['withholding.tax'].create({
+            'name': '1040 R',
+            'code': '1040R',
+            'account_receivable_id': account_receivable.id,
+            'account_payable_id': account_payable.id,
+            'journal_id': misc_journal.id,
+            'payment_term': self.env.ref(
+                'account.account_payment_term_advance').id,
+            'wt_types': 'ritenuta',
+            'causale_pagamento_id': self.env.ref(
+                'l10n_it_causali_pagamento.r').id,
+            'rate_ids': [(0, 0, {
+                'tax': 11.50,
+                'base': 1.0,
+            })]
+        })
+        # case with ENASARCO only in DatiCassaPrevidenziale and not in DatiRitenuta.
+        # This should not happen, but it is valid for SDI
         res = self.run_wizard('test01', 'IT05979361218_014.xml')
         invoice_id = res.get('domain')[0][2][0]
         invoice = self.invoice_model.browse(invoice_id)
@@ -678,7 +845,8 @@ class TestFatturaPAEnasarco(FatturapaCommon):
         self.assertEqual(invoice.amount_untaxed, 2470.00)
         self.assertEqual(invoice.amount_tax, 543.40)
         self.assertEqual(invoice.amount_total, 3013.40)
-        self.assertEqual(invoice.amount_net_pay, 2690.57)
+        self.assertEqual(invoice.amount_net_pay, 2729.35)
+        self.assertEqual(invoice.withholding_tax_amount, 284.05)
         self.assertEqual(invoice.welfare_fund_ids[0].kind_id.code, 'N2')
         self.assertTrue(len(invoice.e_invoice_line_ids) == 1)
         self.assertEqual(
@@ -689,3 +857,26 @@ class TestFatturaPAEnasarco(FatturapaCommon):
             invoice.e_invoice_line_ids[0].unit_price, 2470.0)
         self.assertEqual(
             invoice.e_invoice_line_ids[0].total_price, 2470.0)
+
+    def test_02_xml_import_enasarco(self):
+        # Giacomo Neri, agente di commercio di Firenze.
+        # Imponibile 10
+        res = self.run_wizard('test02', 'ITNREGCM80H30D612D_20003.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertEqual(invoice.amount_untaxed, 10.0)
+        self.assertEqual(invoice.amount_tax, 2.2)
+        self.assertEqual(invoice.amount_total, 12.2)
+        self.assertEqual(invoice.amount_net_pay, 10.2)
+        self.assertTrue(len(invoice.invoice_line_ids) == 1)
+
+    def test_03_xml_import_enasarco(self):
+        # Come sopra, ma senza "<Ritenuta>SI</Ritenuta>" in riga fattura
+        res = self.run_wizard('test03', 'ITNREGCM80H30D612D_20004.xml')
+        invoice_id = res.get('domain')[0][2][0]
+        invoice = self.invoice_model.browse(invoice_id)
+        self.assertTrue(
+            'E-bill contains DatiRitenuta but no lines subjected to Ritenuta was found'
+            in invoice.e_invoice_validation_message)
+        self.assertEqual(invoice.amount_total, 12.2)
+        self.assertEqual(invoice.amount_net_pay, 12.2)

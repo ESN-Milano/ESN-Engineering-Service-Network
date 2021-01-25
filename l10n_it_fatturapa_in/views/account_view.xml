@@ -29,6 +29,7 @@
                             <field name="e_invoice_received_date"/>
                             <field name="registered"/>
                             <field name="invoices_total"/>
+                            <field name="invoices_date"/>
                         </group>
                     </group>
                     <notebook>
@@ -73,6 +74,7 @@
                 <field name="create_date"/>
                 <field name="xml_supplier_id"/>
                 <field name="invoices_number"/>
+                <field name="invoices_date"/>
                 <field name="registered"/>
                 <field name="in_invoice_ids"/>
             </tree>
@@ -137,6 +139,9 @@
             </field>
             <field name="analytic_tag_ids" position="after">
                 <field name="admin_ref"/>
+            </field>
+            <field name="amount_tax" position="after">
+                <field name="efatt_rounding" widget="monetary" attrs="{'invisible': [('efatt_rounding', '=', 0)]}"/>
             </field>
             <xpath expr="//notebook" position="inside">
                 <page string="E-bill Inconsistencies" attrs="{'invisible': [('fatturapa_attachment_in_id', '=', False)]}">
@@ -277,6 +282,14 @@
                             </tree>
                         </field>
                     </group>
+                    <group string="Withholding">
+                        <field name="ftpa_withholding_ids" nolabel="1" readonly="1">
+                            <tree editable="bottom" string="Withholding Details">
+                                <field name="name"/>
+                                <field name="amount"/>
+                            </tree>
+                        </field>
+                    </group>
                     <group string="Payments">
                         <field name="fatturapa_payments" nolabel="1" readonly="1">
                             <tree string="Payments">
@@ -313,7 +326,7 @@
                     </group>
                     <group>
                         <group string="General Data">
-                            <field name="efatt_rounding"/>
+                            <field name="efatt_rounding" widget="monetary"/>
                             <field name="art73"/>
                        </group>
                     </group>

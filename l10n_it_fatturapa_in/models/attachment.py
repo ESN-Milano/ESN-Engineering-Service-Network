@@ -1,6 +1,7 @@
 
 import base64
 from odoo import fields, models, api, _
+from odoo.tools import format_date
 
 
 class FatturaPAAttachmentIn(models.Model):
@@ -29,6 +30,8 @@ class FatturaPAAttachmentIn(models.Model):
         help="If specified by supplier, total amount of the document net of "
              "any discount and including tax charged to the buyer/ordered"
     )
+    invoices_date = fields.Char(
+        string="Invoices date", compute="_compute_xml_data", store=True)
     registered = fields.Boolean(
         "Registered", compute="_compute_registered", store=True)
 
@@ -74,18 +77,27 @@ class FatturaPAAttachmentIn(models.Model):
     @api.depends('ir_attachment_id.datas')
     def _compute_xml_data(self):
         for att in self:
-            fatt = self.env['wizard.import.fatturapa'].get_invoice_obj(att)
+            wiz_obj = self.env['wizard.import.fatturapa'] \
+                .with_context(from_attachment=att)
+            fatt = wiz_obj.get_invoice_obj(att)
             cedentePrestatore = fatt.FatturaElettronicaHeader.CedentePrestatore
-            partner_id = self.env['wizard.import.fatturapa'].getCedPrest(
-                cedentePrestatore)
+            partner_id = wiz_obj.getCedPrest(cedentePrestatore)
             att.xml_supplier_id = partner_id
             att.invoices_number = len(fatt.FatturaElettronicaBody)
             att.invoices_total = 0
+            invoices_date = []
             for invoice_body in fatt.FatturaElettronicaBody:
                 att.invoices_total += float(
                     invoice_body.DatiGenerali.DatiGeneraliDocumento.
                     ImportoTotaleDocumento or 0
                 )
+                invoice_date = format_date(
+                    att.with_context(
+                        lang=att.env.user.lang).env, fields.Date.from_string(
+                            invoice_body.DatiGenerali.DatiGeneraliDocumento.Data))
+                if invoice_date not in invoices_date:
+                    invoices_date.append(invoice_date)
+            att.invoices_date = ' '.join(invoices_date)
 
     @api.multi
     @api.depends('in_invoice_ids')

@@ -1,6 +1,5 @@
 #  -*- coding: utf-8 -*-
 #  Copyright 2019 Simone Rubino - Agile Business Group
-#  License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 from odoo import api, models
 from odoo.tools.safe_eval import safe_eval
@@ -13,7 +12,10 @@ class AccountInvoiceRefund(models.TransientModel):
     def compute_refund(self, mode='refund'):
         res = super(AccountInvoiceRefund, self).compute_refund(mode=mode)
         if isinstance(res, dict):
-            invoice_ids_domain = res['domain'][-1]
+            if mode == 'modify':
+                invoice_ids_domain = ('id', 'in', [res['res_id']])
+            else:
+                invoice_ids_domain = res['domain'][-1]
             invoices = self.env['account.invoice'].search([invoice_ids_domain])
             if all(not inv.corrispettivo for inv in invoices):
                 return res

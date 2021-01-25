@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import base64
 import tempfile
 from odoo.modules import get_module_resource
@@ -28,6 +26,85 @@ class FatturapaCommon(SingleTransactionCase):
             'rate_ids': [(0, 0, {'tax': 20.0})],
             'causale_pagamento_id':
                 self.env.ref('l10n_it_causali_pagamento.a').id,
+        })
+
+    def create_wt_23_20(self):
+        return self.env['withholding.tax'].create({
+            'name': '2320',
+            'code': '2320',
+            'account_receivable_id': self.payable_account_id,
+            'account_payable_id': self.payable_account_id,
+            'payment_term': self.env.ref('account.account_payment_term').id,
+            'rate_ids': [(0, 0, {'tax': 23.0, 'base': 0.2})],
+            'causale_pagamento_id':
+                self.env.ref('l10n_it_causali_pagamento.a').id,
+        })
+
+    def create_wt_23_50(self):
+        return self.env['withholding.tax'].create({
+            'name': '2320',
+            'code': '2320',
+            'account_receivable_id': self.payable_account_id,
+            'account_payable_id': self.payable_account_id,
+            'payment_term': self.env.ref('account.account_payment_term').id,
+            'rate_ids': [(0, 0, {'tax': 23.0, 'base': 0.5})],
+            'causale_pagamento_id':
+                self.env.ref('l10n_it_causali_pagamento.a').id,
+        })
+
+    def create_wt_26_20q(self):
+        return self.env['withholding.tax'].create({
+            'name': '2620q',
+            'code': '2620q',
+            'account_receivable_id': self.payable_account_id,
+            'account_payable_id': self.payable_account_id,
+            'payment_term': self.env.ref('account.account_payment_term').id,
+            'rate_ids': [(0, 0, {'tax': 26.0, 'base': 0.2})],
+            'causale_pagamento_id':
+                self.env.ref('l10n_it_causali_pagamento.q').id,
+        })
+
+    def create_wt_26_40q(self):
+        return self.env['withholding.tax'].create({
+            'name': '2640q',
+            'code': '2640q',
+            'account_receivable_id': self.payable_account_id,
+            'account_payable_id': self.payable_account_id,
+            'payment_term': self.env.ref('account.account_payment_term').id,
+            'rate_ids': [(0, 0, {'tax': 26.0, 'base': 0.4})],
+            'causale_pagamento_id':
+                self.env.ref('l10n_it_causali_pagamento.q').id,
+        })
+
+    def create_wt_27_20q(self):
+        return self.env['withholding.tax'].create({
+            'name': '2720q',
+            'code': '2720q',
+            'account_receivable_id': self.payable_account_id,
+            'account_payable_id': self.payable_account_id,
+            'payment_term': self.env.ref('account.account_payment_term').id,
+            'rate_ids': [(0, 0, {'tax': 27.0, 'base': 0.2})],
+            'causale_pagamento_id':
+                self.env.ref('l10n_it_causali_pagamento.q').id,
+        })
+
+    def create_wt_4q(self):
+        return self.env['withholding.tax'].create({
+            'name': '4q',
+            'code': '4q',
+            'wt_types': 'enasarco',
+            'account_receivable_id': self.payable_account_id,
+            'account_payable_id': self.payable_account_id,
+            'payment_term': self.env.ref('account.account_payment_term').id,
+            'rate_ids': [(0, 0, {'tax': 4.0, 'base': 1.0})],
+            'causale_pagamento_id':
+                self.env.ref('l10n_it_causali_pagamento.q').id,
+        })
+
+    def create_res_bank(self):
+        return self.env['res.bank'].create({
+            'name': 'Banca generica',
+            'bic': 'BCITITMM',
         })
 
     def run_wizard(self, name, file_name, datas_fname=None,
@@ -99,3 +176,4 @@ class FatturapaCommon(SingleTransactionCase):
             arrotondamenti_passivi_account_id)
         self.env.user.company_id.arrotondamenti_tax_id = (
             arrotondamenti_tax_id)
+        self.env['res.lang'].load_lang('it_IT')

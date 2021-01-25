@@ -50,6 +50,7 @@ class FatturaPACommon(AccountTestUsers):
         self.tax_22_SP = self.env.ref('l10n_it_fatturapa.tax_22_SP')
         self.res_partner_fatturapa_0 = self.env.ref(
             'l10n_it_fatturapa.res_partner_fatturapa_0')
+        # B2B Customer
         self.res_partner_fatturapa_2 = self.env.ref(
             'l10n_it_fatturapa.res_partner_fatturapa_2')
         self.intermediario = self.env.ref(
@@ -73,6 +74,8 @@ class FatturaPACommon(AccountTestUsers):
         self.cr.execute(
             "UPDATE res_company SET currency_id = %s WHERE id = %s",
             [self.EUR.id, self.company.id])
+        # Otherwise self.company in cache could keep the old wrong value USD
+        self.company.refresh()
 
     def AttachFileToInvoice(self, InvoiceId, filename):
         self.fatturapa_attach.create(

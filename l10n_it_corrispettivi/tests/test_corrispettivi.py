@@ -1,5 +1,4 @@
 # Copyright 2018 Simone Rubino - Agile Business Group
-# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 from odoo.addons.account.tests.account_test_classes import AccountingTestCase
 from odoo.exceptions import UserError
@@ -13,7 +12,16 @@ class TestCorrispettivi(AccountingTestCase):
         self.fiscal_pos_model = self.env['account.fiscal.position']
         self.journal_model = self.env['account.journal']
         self.invoice_model = self.env['account.invoice']
-
+        self.a_sale = self.env['account.account'].search([
+            ('user_type_id', '=', self.env.ref(
+                'account.data_account_type_revenue').id)
+        ], limit=1)
+        self.tax_model = self.env['account.tax']
+        self.tax22inc = self.tax_model.create({
+            'name': 'Tax 22 INC',
+            'amount': 22,
+            'price_include': True,
+        })
         self.corr_fiscal_position = self.fiscal_pos_model.create({
             'name': 'receipts fiscal position',
             'corrispettivi': True,
@@ -42,7 +50,17 @@ class TestCorrispettivi(AccountingTestCase):
     def create_corrispettivi_invoice(self):
         corr_invoice = self.invoice_model \
             .with_context(default_corrispettivi=True) \
-            .create({'account_id': self.account_receivable.id})
+            .create({'account_id': self.account_receivable.id,
+                     'invoice_line_ids': [
+                         (0, 0, {
+                             'account_id': self.a_sale.id,
+                             'product_id': self.env.ref('product.product_product_5').id,
+                             'name': 'Corrispettivo',
+                             'quantity': 1,
+                             'price_unit': 10,
+                             'invoice_line_tax_ids': [(6, 0, {self.tax22inc.id})]
+                         }),
+                     ]})
         return corr_invoice
 
     def test_get_corr_journal(self):
@@ -130,3 +148,47 @@ class TestCorrispettivi(AccountingTestCase):
         self.assertEqual(
             corr_invoice.journal_id,
             self.journal_model.get_corr_journal())
+
+    def test_invoice_refund_ok(self):
+        """ Test invoice creation. """
+        corr_invoice = self.create_corrispettivi_invoice()
+        self.assertTrue(corr_invoice)
+        corr_invoice.action_invoice_open()
+        self.assertEqual(corr_invoice.state, 'open')
+        refund_invoice_dict = self.env['account.invoice.refund'].with_context(
+            active_ids=corr_invoice.ids).create({
+                'filter_refund': 'refund',
+                'description': 'A refund reason',
+            }).invoice_refund()
+        refund_invoice = self.invoice_model.search(refund_invoice_dict['domain'])
+        self.assertTrue(refund_invoice)
+        refund_invoice.action_invoice_open()
+
+    def test_invoice_refund_modify_ok(self):
+        """ Test invoice creation. """
+        corr_invoice = self.create_corrispettivi_invoice()
+        self.assertTrue(corr_invoice)
+        corr_invoice.action_invoice_open()
+        self.assertEqual(corr_invoice.state, 'open')
+        refund_invoice_dict = self.env['account.invoice.refund'].with_context(
+            active_ids=corr_invoice.ids).create({
+                'filter_refund': 'modify',
+                'description': 'A modify refund reason',
+            }).invoice_refund()
+        refund_invoice = self.invoice_model.search(refund_invoice_dict['domain'])
+        self.assertTrue(refund_invoice)
+        refund_invoice.action_invoice_open()
+
+    def test_invoice_refund_cancel_ok(self):
+        """ Test invoice creation. """
+        corr_invoice = self.create_corrispettivi_invoice()
+        self.assertTrue(corr_invoice)
+        corr_invoice.action_invoice_open()
+        self.assertEqual(corr_invoice.state, 'open')
+        refund_invoice_dict = self.env['account.invoice.refund'].with_context(
+            active_ids=corr_invoice.ids).create({
+                'filter_refund': 'cancel',
+                'description': 'A cancel refund reason',
+            }).invoice_refund()
+        refund_invoice = self.invoice_model.search(refund_invoice_dict['domain'])
+        self.assertTrue(refund_invoice)

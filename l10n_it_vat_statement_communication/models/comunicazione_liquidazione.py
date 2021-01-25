@@ -265,7 +265,7 @@ class ComunicazioneLiquidazione(models.Model):
         if self.last_month:
             x1_2_1_5_UltimoMese = etree.SubElement(
                 x1_2_1_Frontespizio, etree.QName(NS_IV, "UltimoMese"))
-            x1_2_1_5_UltimoMese.text = self.last_month
+            x1_2_1_5_UltimoMese.text = str(self.last_month)
         # Liquidazione Gruppo
         x1_2_1_6_LiquidazioneGruppo = etree.SubElement(
             x1_2_1_Frontespizio, etree.QName(NS_IV, "LiquidazioneGruppo"))
@@ -288,7 +288,7 @@ class ComunicazioneLiquidazione(models.Model):
                 x1_2_1_Frontespizio,
                 etree.QName(NS_IV, "CodiceFiscaleSocieta"))
             x1_2_1_9_CodiceFiscaleSocieta.text =\
-                self.declarant_fiscalcode_company.code
+                self.declarant_fiscalcode_company
         # FirmaDichiarazione
         x1_2_1_10_FirmaDichiarazione = etree.SubElement(
             x1_2_1_Frontespizio, etree.QName(NS_IV, "FirmaDichiarazione"))
@@ -414,6 +414,10 @@ class ComunicazioneLiquidazione(models.Model):
         InteressiDovuti.text = "{:.2f}".format(
             quadro.interessi_dovuti).replace('.', ',')
         # 1.2.2.1.17 Acconto
+        if quadro.metodo_calcolo_acconto:
+            Metodo = etree.SubElement(
+                xModulo, etree.QName(NS_IV, "Metodo"))
+            Metodo.text = quadro.metodo_calcolo_acconto
         Acconto = etree.SubElement(
             xModulo, etree.QName(NS_IV, "Acconto"))
         Acconto.text = "{:.2f}".format(
@@ -462,6 +466,14 @@ class ComunicazioneLiquidazioneVp(models.Model):
         for quadro in self:
             quadro.iva_da_versare = 0
             quadro.iva_a_credito = 0
+            if quadro.period_type == 'quarter' and quadro.quarter == 5:
+                # VP14 non deve essere compilato dai contribuenti trimestrali di cui
+                # all’art. 7 del d.P.R. 14 ottobre 1999, n.542,
+                # relativamente al 4° trimestre
+                # I contribuenti che hanno optato per la liquidazione trimestrale ai
+                # sensi dell’art. 7 del D.P.R. n. 542/99 devono indicare “5” per il
+                # quarto trimestre
+                continue
             debito = (
                 quadro.iva_dovuta_debito + quadro.debito_periodo_precedente +
                 quadro.interessi_dovuti
@@ -509,7 +521,13 @@ class ComunicazioneLiquidazioneVp(models.Model):
     crediti_imposta = fields.Float(string='Tax credits')
     interessi_dovuti = fields.Float(
         string='Due interests for quarterly statements')
-    accounto_dovuto = fields.Float(string='Due down payment')
+    accounto_dovuto = fields.Float(string='Down payment due')
+    metodo_calcolo_acconto = fields.Selection([
+        ('1', '1'),
+        ('2', '2'),
+        ('3', '3'),
+        ('4', '4'),
+    ], string="Down payment computation method")
     iva_da_versare = fields.Float(
         string='VAT to pay',
         compute="_compute_VP14_iva_da_versare_credito", store=True)
@@ -577,9 +595,6 @@ class ComunicazioneLiquidazioneVp(models.Model):
             # Reset valori
             quadro._reset_values()
 
-            interests_account_id = quadro.comunicazione_id.company_id.\
-                of_account_end_vat_statement_interest_account_id.id or False
-
             for liq in quadro.liquidazioni_ids:
 
                 for period in liq.date_range_ids:
@@ -605,18 +620,16 @@ class ComunicazioneLiquidazioneVp(models.Model):
                 else:
                     quadro.credito_periodo_precedente =\
                         liq.previous_credit_vat_amount
-                # Credito anno precedente (NON GESTITO)
+                quadro.accounto_dovuto = liq.advance_amount
+                if liq.interests_debit_vat_account_id:
+                    quadro.interessi_dovuti += liq.interests_debit_vat_amount
                 # Versamenti auto UE (NON GESTITO)
                 # Crediti d’imposta (NON GESTITO)
                 # Da altri crediti e debiti calcolo:
-                # 1 - Interessi dovuti per liquidazioni trimestrali
-                # 2 - Decremento iva esigibile con righe positive
-                # 3 - Decremento iva detratta con righe negative
+                # 1 - Decremento iva esigibile con righe positive
+                # 2 - Decremento iva detratta con righe negative
                 for line in liq.generic_vat_account_line_ids:
-                    if interests_account_id and \
-                            (line.account_id.id == interests_account_id):
-                        quadro.interessi_dovuti += (-1 * line.amount)
-                    elif line.amount > 0:
+                    if line.amount > 0:
                         quadro.iva_esigibile -= line.amount
                     else:
                         quadro.iva_detratta += line.amount
