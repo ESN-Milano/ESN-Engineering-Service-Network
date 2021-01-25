@@ -24,7 +24,19 @@ odoo.define('fiscal_epos_print.models', function (require) {
             this.fiscal_receipt_date = null;
             this.fiscal_z_rep_number = null;
             this.fiscal_printer_serial = this.pos.config.fiscal_printer_serial || null;
+            this.fiscal_printer_debug_info = null;
         },
+
+        // Manages the case in which after printing an invoice
+        // you pass a barcode in the mask of the registered invoice
+        add_product: function(product, options) {
+            if(this._printed || this.finalized == true) {
+                this.destroy();
+                return this.pos.get_order().add_product(product, options);
+            }
+            OrderSuper.prototype.add_product.apply(this, arguments);
+        },
+
         check_order_has_refund: function() {
             var order = this.pos.get_order();
             if (order) {
@@ -45,6 +57,7 @@ odoo.define('fiscal_epos_print.models', function (require) {
             this.fiscal_receipt_date = json.fiscal_receipt_date;
             this.fiscal_z_rep_number = json.fiscal_z_rep_number;
             this.fiscal_printer_serial = json.fiscal_printer_serial;
+            this.fiscal_printer_debug_info = json.fiscal_printer_debug_info;
         },
 
         export_as_JSON: function() {
@@ -58,6 +71,7 @@ odoo.define('fiscal_epos_print.models', function (require) {
             result.fiscal_receipt_date = this.fiscal_receipt_date; // parsed by backend
             result.fiscal_z_rep_number = this.fiscal_z_rep_number;
             result.fiscal_printer_serial = this.fiscal_printer_serial || null;
+            result.fiscal_printer_debug_info = this.fiscal_printer_debug_info;
             return result;
         },
 
@@ -73,6 +87,7 @@ odoo.define('fiscal_epos_print.models', function (require) {
             receipt.fiscal_receipt_date = this.fiscal_receipt_date;
             receipt.fiscal_z_rep_number = this.fiscal_z_rep_number;
             receipt.fiscal_printer_serial = this.fiscal_printer_serial;
+            receipt.fiscal_printer_debug_info = this.fiscal_printer_debug_info;
 
             return receipt
         },
@@ -89,6 +104,12 @@ odoo.define('fiscal_epos_print.models', function (require) {
         export_for_printing: function(){
             var res = _orderline_super.export_for_printing.call(this, arguments);
             res['tax_department'] = this.get_tax_details_r();
+            if (res['tax_department']['included_in_price'] == true) {
+                res['full_price'] = this.price
+            }
+            else {
+                res['full_price'] = this.price * (1 + (res['tax_department']['tax_amount'] / 100))
+            }
             return res;
         },
         get_tax_details_r: function(){
@@ -97,12 +118,21 @@ odoo.define('fiscal_epos_print.models', function (require) {
                 return {
                     code: this.pos.taxes_by_id[i].fpdeptax,
                     taxname: this.pos.taxes_by_id[i].name,
+                    included_in_price: this.pos.taxes_by_id[i].price_include,
+                    tax_amount: this.pos.taxes_by_id[i].amount,
                 }
             }
             this.pos.gui.show_popup('error', {
                 'title': _t('Error'),
                 'body': _t('No taxes found'),
             });
+        },
+        set_quantity: function(quantity, keep_price) {
+            if (quantity == '0') {
+                // Epson FP doesn't allow lines with quantity 0
+                quantity = 'remove';
+            }
+            return _orderline_super.set_quantity.call(this, quantity, keep_price);
         },
         compute_all: function(taxes, price_unit, quantity, currency_rounding, no_map_tax) {
             var res = _orderline_super.compute_all.call(this, taxes, price_unit, quantity, currency_rounding, no_map_tax);

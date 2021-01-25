@@ -1,6 +1,5 @@
 # Copyright 2014 Davide Corio <davide.corio@abstract.it>
 # Copyright 2019 Sergio Zanchetta <https://github.com/primes2h>
-# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
@@ -53,6 +52,11 @@ class ResPartner(models.Model):
 
     electronic_invoice_no_contact_update = fields.Boolean(
         "Do not update the contact from Electronic Invoice Details")
+
+    electronic_invoice_use_this_address = fields.Boolean(
+        "Use this e-invoicing data when invoicing to this address",
+        help="Set this when the main company has got several Addressee Codes or PEC"
+    )
 
     @api.multi
     def _compute_electronic_invoice_data_complete(self):

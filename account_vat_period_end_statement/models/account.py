@@ -30,7 +30,8 @@ class AccountVatPeriodEndStatement(models.Model):
                 statement.previous_credit_vat_amount +
                 statement.previous_debit_vat_amount -
                 statement.tax_credit_amount +
-                statement.interests_debit_vat_amount
+                statement.interests_debit_vat_amount -
+                statement.advance_amount
             )
             statement.authority_vat_amount = authority_amount
 
@@ -168,6 +169,20 @@ class AccountVatPeriodEndStatement(models.Model):
             'paid': [('readonly', True)],
             'draft': [('readonly', False)]
         }, digits=dp.get_precision('Account'))
+    advance_account_id = fields.Many2one(
+        'account.account', 'Down payment',
+        states={
+            'confirmed': [('readonly', True)],
+            'paid': [('readonly', True)],
+            'draft': [('readonly', False)]
+        })
+    advance_amount = fields.Float(
+        'Down payment Amount',
+        states={
+            'confirmed': [('readonly', True)],
+            'paid': [('readonly', True)],
+            'draft': [('readonly', False)]
+        }, digits=dp.get_precision('Account'))
     generic_vat_account_line_ids = fields.One2many(
         'statement.generic.account.line', 'statement_id',
         'Other VAT Credits / Debits or Tax Compensations',
@@ -182,7 +197,7 @@ class AccountVatPeriodEndStatement(models.Model):
             'paid': [('readonly', True)],
             'draft': [('readonly', False)]})
     authority_vat_account_id = fields.Many2one(
-        'account.account', 'Tax Authority VAT Account', required=True,
+        'account.account', 'Tax Authority VAT Account',
         states={
             'confirmed': [('readonly', True)],
             'paid': [('readonly', True)],
@@ -190,6 +205,7 @@ class AccountVatPeriodEndStatement(models.Model):
     authority_vat_amount = fields.Float(
         'Authority VAT Amount', compute="_compute_authority_vat_amount",
         digits=dp.get_precision('Account'))
+    # TODO is this field needed?
     deductible_vat_amount = fields.Float(
         'Deductible VAT Amount', compute="_compute_deductible_vat_amount",
         digits=dp.get_precision('Account'))
@@ -247,6 +263,7 @@ class AccountVatPeriodEndStatement(models.Model):
         'res.company', 'Company',
         default=lambda self: self.env['res.company']._company_default_get(
             'account.invoice'))
+    annual = fields.Boolean("Annual prospect")
 
     @api.multi
     def unlink(self):
@@ -390,6 +407,25 @@ class AccountVatPeriodEndStatement(models.Model):
                         statement.tax_credit_amount)
                 lines_to_create.append((0, 0, tax_credit_vat_data))
 
+            if statement.advance_amount:
+                advance_vat_data = {
+                    'name': _('Tax Credits'),
+                    'account_id': statement.advance_account_id.id,
+                    'move_id': move_id,
+                    'journal_id': statement.journal_id.id,
+                    'debit': 0.0,
+                    'credit': 0.0,
+                    'date': statement_date,
+                    'company_id': statement.company_id.id,
+                }
+                if statement.advance_amount < 0:
+                    advance_vat_data['debit'] = math.fabs(
+                        statement.advance_amount)
+                else:
+                    advance_vat_data['credit'] = math.fabs(
+                        statement.advance_amount)
+                lines_to_create.append((0, 0, advance_vat_data))
+
             if statement.previous_debit_vat_amount:
                 previous_debit_vat_data = {
                     'name': _('Previous Debits VAT'),
@@ -488,8 +524,9 @@ class AccountVatPeriodEndStatement(models.Model):
         for statement in self:
             statement.previous_debit_vat_amount = 0.0
             prev_statements = self.search(
-                [('date', '<', statement.date)], order='date desc')
-            if prev_statements:
+                [('date', '<', statement.date), ('annual', '=', False)],
+                order='date desc')
+            if prev_statements and not statement.annual:
                 prev_statement = prev_statements[0]
                 if (
                     prev_statement.residual > 0 and
@@ -503,9 +540,15 @@ class AccountVatPeriodEndStatement(models.Model):
                             - prev_statement.authority_vat_amount)})
                     company = statement.company_id or self.env.user.company_id
                     statement_fiscal_year_dates = (
-                        company.compute_fiscalyear_dates(statement.date))
+                        company.compute_fiscalyear_dates(
+                            statement.date_range_ids and
+                            statement.date_range_ids[0].date_start or
+                            statement.date))
                     prev_statement_fiscal_year_dates = (
-                        company.compute_fiscalyear_dates(prev_statement.date))
+                        company.compute_fiscalyear_dates(
+                            prev_statement.date_range_ids and
+                            prev_statement.date_range_ids[0].date_start or
+                            prev_statement.date))
                     if (
                         prev_statement_fiscal_year_dates['date_to'] <
                         statement_fiscal_year_dates['date_from']

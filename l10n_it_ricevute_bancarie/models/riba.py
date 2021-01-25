@@ -40,6 +40,7 @@ class RibaList(models.Model):
 
     _name = 'riba.distinta'
     _description = 'C/O Slip'
+    _order = 'date_created desc'
 
     name = fields.Char(
         'Reference', required=True, readonly=True,
@@ -202,9 +203,13 @@ class RibaListLine(models.Model):
                         ).strftime('%d/%m/%Y')))
                 if not line.invoice_number:
                     line.invoice_number = str(
+                        move_line.move_line_id.invoice_id.move_id.name if
+                        move_line.move_line_id.invoice_id.move_name == '/' else
                         move_line.move_line_id.invoice_id.move_name)
                 else:
                     line.invoice_number = "%s, %s" % (line.invoice_number, str(
+                        move_line.move_line_id.invoice_id.move_id.name if
+                        move_line.move_line_id.invoice_id.move_name == '/' else
                         move_line.move_line_id.invoice_id.move_name))
 
     amount = fields.Float(
@@ -280,8 +285,11 @@ class RibaListLine(models.Model):
     ], 'State', readonly=True, track_visibility='onchange')
     payment_ids = fields.Many2many(
         'account.move.line', compute='_compute_lines', string='Payments')
-    type = fields.Char(
-        relation='distinta_id.type', size=32, string='Type', readonly=True)
+    type = fields.Selection(
+        string="Type", related='distinta_id.config_id.type', readonly=True)
+    config_id = fields.Many2one(
+        string="Configuration", related='distinta_id.config_id',
+        readonly=True)
 
     @api.multi
     def confirm(self):
@@ -297,8 +305,21 @@ class RibaListLine(models.Model):
                 'date': line.distinta_id.registration_date,
             })
             to_be_reconciled = self.env['account.move.line']
+            riba_move_line_name = ''
             for riba_move_line in line.move_line_ids:
                 total_credit += riba_move_line.amount
+                if riba_move_line.move_line_id.invoice_id.number and \
+                        riba_move_line.move_line_id.invoice_id.number \
+                        not in riba_move_line_name:
+                    riba_move_line_name = ' '.join([
+                        riba_move_line_name,
+                        riba_move_line.move_line_id.invoice_id.number
+                    ]).lstrip()
+                elif riba_move_line.move_line_id.name and \
+                        riba_move_line.move_line_id.name not in riba_move_line_name:
+                    riba_move_line_name = ' '.join([
+                        riba_move_line_name, riba_move_line.move_line_id.name
+                    ]).lstrip()
                 move_line = move_line_model.with_context({
                     'check_move_validity': False
                 }).create(
@@ -320,8 +341,11 @@ class RibaListLine(models.Model):
             move_line_model.with_context({
                 'check_move_validity': False
             }).create({
-                'name': 'C/O %s - Line %s' % (line.distinta_id.name,
-                                              line.sequence),
+                'name': 'C/O %s-%s Ref. %s - %s' % (
+                    line.distinta_id.name,
+                    line.sequence,
+                    riba_move_line_name,
+                    line.partner_id.name),
                 'account_id': (
                     line.acceptance_account_id.id or
                     line.distinta_id.config_id.acceptance_account_id.id
