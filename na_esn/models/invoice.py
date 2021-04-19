@@ -70,7 +70,7 @@ class CustomFattura(models.Model):
     def _compute_is_consegna_due(self):
         for invoice in self:
             if invoice.state in ['draft', 'open', 'paid', 'proforma', 'proforma2'] and invoice.is_tranche:
-                if invoice.data_consegna < fields.Date.today() and not invoice.is_consegna_payed:
+                if invoice.data_consegna and invoice.data_consegna < fields.Date.today() and not invoice.is_consegna_payed:
                     invoice.is_consegna_due = True
                     if not invoice.is_consegna_due_stored:
                         invoice.write({
