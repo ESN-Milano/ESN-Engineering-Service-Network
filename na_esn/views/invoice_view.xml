@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+     <record id="na_custom_invoice_purchase_form" model="ir.ui.view">
+            <field name="name">na.custom.invoice.purchase.form</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="purchase.view_invoice_supplier_purchase_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='vendor_bill_purchase_id']" position="attributes">
+                    <attribute name="domain">[('partner_id','child_of',[partner_id]), ('vendor_bill_id','=',False)]</attribute>
+                </xpath>
+            </field>
+     </record>
+
     <record id="na_custom_invoice_supplier_form" model="ir.ui.view">
             <field name="name">na.custom.invoice.supplier.form</field>
             <field name="model">account.invoice</field>

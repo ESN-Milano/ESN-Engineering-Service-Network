@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+
     <record id="na_custom_contatti_form" model="ir.ui.view">
             <field name="name">na.custom.contatti.form</field>
             <field name="model">res.partner</field>
             <field name="inherit_id" ref="account.view_partner_property_form" />
             <field name="arch" type="xml">
-
                 <xpath expr="//field[@name='property_supplier_payment_term_id']" position="after">
                     <field name="metodo_pagamento" attrs="{'invisible':[('supplier','=', False)]}"/>
                 </xpath>
-
             </field>
     </record>
 
@@ -18,13 +17,23 @@
             <field name="model">res.partner</field>
             <field name="inherit_id" ref="base.view_res_partner_filter"/>
             <field name="arch" type="xml">
-
                 <xpath expr="//field[@name='name']" position="after">
                     <field name="vat"/>
                     <field name="nome_corretto" filter_domain="['|','|','|',('nome_corretto','ilike',self),('ref','=',self),('email','ilike',self),('child_ids','child_of',[self])]"/>
                 </xpath>
-
             </field>
+    </record>
+
+    <!-- Inherit Form View to Modify it -->
+    <record id="na_esn_view_partner_form" model="ir.ui.view">
+        <field name="name">na.esn.view.partner.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="is_tecnico" options="{'no_create': True}"/>
+            </xpath>
+        </field>
     </record>
 
 </odoo>

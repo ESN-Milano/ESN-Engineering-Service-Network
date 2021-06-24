@@ -2,11 +2,13 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import api, fields, models, exceptions
 
+
 class CustomContatti(models.Model):
     _inherit = 'res.partner'
 
     nome_corretto = fields.Char(string="Nome semplice")
     metodo_pagamento = fields.Many2one('metodi.pagamento', string='Metodo di Pagamento')
+    is_tecnico = fields.Boolean(string="E' un tecnico")
 
     @api.model
     def create(self, values):
