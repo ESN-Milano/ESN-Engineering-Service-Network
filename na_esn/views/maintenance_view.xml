@@ -6,7 +6,7 @@
             <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form" />
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='user_id']" position="after">
-                    <field name="tecnici" widget="many2many_tags"/>
+                    <field name="na_technicians" widget="many2many_tags" options="{'no_quick_create':True,'no_create':True,'no_create_edit':False}"/>
                     <field name="tecnici_char" groups="base.group_no_one"/>
                 </xpath>
             </field>
@@ -40,15 +40,20 @@
 <!--            </field>-->
 <!--    </record>-->
 
-<!--    <record id="na_custom_maintenance_calendar" model="ir.ui.view">-->
-<!--            <field name="name">na.custom.maintenance.calendar</field>-->
-<!--            <field name="model">maintenance.request</field>-->
-<!--            <field name="inherit_id" ref="cq_esn2017.hr_equipment_view_calendar" />-->
-<!--            <field name="arch" type="xml">-->
-<!--                <xpath expr="//field[@name='maintenance_team_id']" position="after">-->
-<!--                    <field name="tecnici_char"/>-->
-<!--                </xpath>-->
-<!--            </field>-->
-<!--    </record>-->
+    <record id="na_esn_custom_maintenance_calendar" model="ir.ui.view">
+            <field name="name">na.esn.custom.maintenance.calendar</field>
+            <field name="model">maintenance.request</field>
+            <field name="inherit_id" ref="maintenance.hr_equipment_view_calendar"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='user_id']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='user_id']" position="after">
+<!--                    Line 53: part of code from Odoo Source Code, calendar module, Copyright Odoo - LGPLv3 -->
+                    <field name="na_technicians" write_model="calendar.contacts" write_field="partner_id" avatar_field="image_small"/>
+                    <field name="tecnici_char"/>
+                </xpath>
+            </field>
+    </record>
 
 </odoo>
