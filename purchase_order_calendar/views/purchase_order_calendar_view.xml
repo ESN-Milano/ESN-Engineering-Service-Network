@@ -1,0 +1,23 @@
+<odoo>
+    <record id="view_purchase_order_calendar" model="ir.ui.view">
+        <field name="name">purchase.order.calendar</field>
+        <field name="model">purchase.order</field>
+        <field name="arch" type="xml">
+            <calendar string="Calendario Ordini di Acquisto" date_start="date_planned">
+                <field name="partner_id"/>
+                <field name="name"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="action_purchase_order_calendar" model="ir.actions.act_window">
+        <field name="name">Calendario Ordini di Acquisto</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">calendar,tree,form</field>
+        <field name="view_id" ref="view_purchase_order_calendar"/>
+    </record>
+
+    <menuitem id="menu_purchase_order_calendar" name="Calendario Ordini di Acquisto"
+              parent="purchase.menu_purchase_orders"
+              action="action_purchase_order_calendar"/>
+</odoo>
